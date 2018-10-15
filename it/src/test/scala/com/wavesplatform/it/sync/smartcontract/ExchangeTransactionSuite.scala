@@ -37,7 +37,9 @@ class ExchangeTransactionSuite extends BaseTransactionSuite with CancelAfterFail
 
   test("set simple contracts and put exchange transaction in blockchain") {
     for ((contr1, contr2, mcontr) <- Seq(
-           (sc1, sc1, sc1)
+           (sc1, sc1, sc1),
+           (null, sc1, null),
+           (null, null, sc1)
          )) {
       setContract(contr1, acc0)
       setContract(contr2, acc1)
@@ -54,7 +56,9 @@ class ExchangeTransactionSuite extends BaseTransactionSuite with CancelAfterFail
   test("negative: set simple contracts and put exchange transaction in blockchain") {
     for ((contr1, contr2, mcontr) <- Seq(
            (sc1, sc2, sc1),
-           (sc1, sc1, sc2)
+           (sc1, sc1, sc2),
+           (null, null, sc2),
+           (null, sc2, null)
          )) {
       setContract(contr1, acc0)
       setContract(contr2, acc1)
@@ -67,16 +71,18 @@ class ExchangeTransactionSuite extends BaseTransactionSuite with CancelAfterFail
   }
 
   def setContract(contractText: String, acc: PrivateKeyAccount) = {
-    val scriptText = contractText.stripMargin
-    val script     = ScriptCompiler(scriptText).explicitGet()._1
-    val setScriptTransaction = SetScriptTransaction
-      .selfSigned(SetScriptTransaction.supportedVersions.head, acc, Some(script), 0.014.waves, System.currentTimeMillis())
-      .right
-      .get
-    val setScriptId = sender
-      .signedBroadcast(setScriptTransaction.json() + ("type" -> JsNumber(SetScriptTransaction.typeId.toInt)))
-      .id
-    nodes.waitForHeightAriseAndTxPresent(setScriptId)
+    if (Option(contractText).isDefined) {
+      val scriptText = contractText.stripMargin
+      val script     = ScriptCompiler(scriptText).explicitGet()._1
+      val setScriptTransaction = SetScriptTransaction
+        .selfSigned(SetScriptTransaction.supportedVersions.head, acc, Some(script), 0.014.waves, System.currentTimeMillis())
+        .right
+        .get
+      val setScriptId = sender
+        .signedBroadcast(setScriptTransaction.json() + ("type" -> JsNumber(SetScriptTransaction.typeId.toInt)))
+        .id
+      nodes.waitForHeightAriseAndTxPresent(setScriptId)
+    }
   }
 
   def exchangeTx() = {
@@ -90,7 +96,7 @@ class ExchangeTransactionSuite extends BaseTransactionSuite with CancelAfterFail
     val mf                  = 700000L
     val buyAmount           = 2
     val sellAmount          = 3
-    val assetPair           = AssetPair.createAssetPair("WAVES", exchAsset).get
+    val assetPair           = AssetPair.createAssetPair(exchAsset, "WAVES").get
     val buy                 = Order.buy(buyer, matcher, assetPair, buyAmount, buyPrice, time, expirationTimestamp, mf, 2)
     val sell                = Order.sell(seller, matcher, assetPair, sellAmount, sellPrice, time, expirationTimestamp, mf, 2)
 
